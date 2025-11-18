@@ -1,12 +1,292 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import Icon from '@/components/ui/icon';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+
+interface CallRecord {
+  id: string;
+  contact: string;
+  phone: string;
+  type: 'incoming' | 'outgoing' | 'missed';
+  duration: string;
+  date: Date;
+  fileSize: string;
+}
+
+const mockCallRecords: CallRecord[] = [
+  {
+    id: '1',
+    contact: 'Анна Петрова',
+    phone: '+7 (999) 123-45-67',
+    type: 'incoming',
+    duration: '5:32',
+    date: new Date('2025-01-18T14:30:00'),
+    fileSize: '2.8 МБ'
+  },
+  {
+    id: '2',
+    contact: 'Офис',
+    phone: '+7 (495) 555-01-01',
+    type: 'outgoing',
+    duration: '12:45',
+    date: new Date('2025-01-18T11:15:00'),
+    fileSize: '6.5 МБ'
+  },
+  {
+    id: '3',
+    contact: 'Неизвестно',
+    phone: '+7 (900) 888-77-66',
+    type: 'missed',
+    duration: '0:00',
+    date: new Date('2025-01-17T18:45:00'),
+    fileSize: '0 МБ'
+  },
+  {
+    id: '4',
+    contact: 'Мама',
+    phone: '+7 (916) 234-56-78',
+    type: 'incoming',
+    duration: '8:12',
+    date: new Date('2025-01-17T16:20:00'),
+    fileSize: '4.2 МБ'
+  },
+  {
+    id: '5',
+    contact: 'Иван Сидоров',
+    phone: '+7 (903) 777-88-99',
+    type: 'outgoing',
+    duration: '3:27',
+    date: new Date('2025-01-17T10:05:00'),
+    fileSize: '1.7 МБ'
+  }
+];
 
 const Index = () => {
+  const [autoRecord, setAutoRecord] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [audioQuality, setAudioQuality] = useState('high');
+  const [storageLimit, setStorageLimit] = useState('100');
+
+  const formatDate = (date: Date) => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return `Сегодня, ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return `Вчера, ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+    } else {
+      return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    }
+  };
+
+  const getCallIcon = (type: string) => {
+    switch (type) {
+      case 'incoming':
+        return <Icon name="PhoneIncoming" className="text-green-500" size={20} />;
+      case 'outgoing':
+        return <Icon name="PhoneOutgoing" className="text-orange-500" size={20} />;
+      case 'missed':
+        return <Icon name="PhoneMissed" className="text-red-500" size={20} />;
+      default:
+        return <Icon name="Phone" size={20} />;
+    }
+  };
+
+  const getCallTypeLabel = (type: string) => {
+    switch (type) {
+      case 'incoming':
+        return 'Входящий';
+      case 'outgoing':
+        return 'Исходящий';
+      case 'missed':
+        return 'Пропущенный';
+      default:
+        return '';
+    }
+  };
+
+  const filteredRecords = mockCallRecords.filter(record =>
+    record.contact.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    record.phone.includes(searchQuery)
+  );
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4 color-black text-black">Добро пожаловать!</h1>
-        <p className="text-xl text-gray-600">тут будет отображаться ваш проект</p>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-2xl mx-auto bg-white min-h-screen shadow-lg">
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
+          <div className="px-4 py-4">
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-2xl font-medium text-gray-900">Записи звонков</h1>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSettingsOpen(true)}
+                className="text-gray-600"
+              >
+                <Icon name="Settings" size={24} />
+              </Button>
+            </div>
+
+            <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg mb-4">
+              <div className="flex items-center gap-3">
+                <Icon name="Mic" size={20} className="text-primary" />
+                <span className="text-sm font-medium text-gray-900">Автозапись звонков</span>
+              </div>
+              <Switch checked={autoRecord} onCheckedChange={setAutoRecord} />
+            </div>
+
+            <div className="relative">
+              <Icon name="Search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Поиск по контактам..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 bg-gray-50 border-gray-200"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="divide-y divide-gray-100">
+          {filteredRecords.map((record) => (
+            <Card key={record.id} className="border-0 rounded-none shadow-none hover:bg-gray-50 transition-colors">
+              <div className="p-4 flex items-center gap-4">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                    {getCallIcon(record.type)}
+                  </div>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-base font-medium text-gray-900 truncate">
+                      {record.contact}
+                    </h3>
+                    <span className="text-sm text-gray-500">{formatDate(record.date)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="secondary" className="text-xs font-normal">
+                      {getCallTypeLabel(record.type)}
+                    </Badge>
+                    <span className="text-sm text-gray-500">{record.phone}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
+                    <span className="flex items-center gap-1">
+                      <Icon name="Clock" size={12} />
+                      {record.duration}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Icon name="HardDrive" size={12} />
+                      {record.fileSize}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10">
+                    <Icon name="Play" size={20} />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="text-gray-400 hover:bg-gray-100">
+                    <Icon name="MoreVertical" size={20} />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))}
+
+          {filteredRecords.length === 0 && (
+            <div className="py-16 text-center">
+              <Icon name="Phone" size={48} className="mx-auto text-gray-300 mb-4" />
+              <p className="text-gray-500">Записи не найдены</p>
+            </div>
+          )}
+        </div>
       </div>
+
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-medium">Настройки записи</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="quality" className="text-sm font-medium">
+                Качество звука
+              </Label>
+              <Select value={audioQuality} onValueChange={setAudioQuality}>
+                <SelectTrigger id="quality">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Низкое (64 kbps)</SelectItem>
+                  <SelectItem value="medium">Среднее (128 kbps)</SelectItem>
+                  <SelectItem value="high">Высокое (256 kbps)</SelectItem>
+                  <SelectItem value="lossless">Без потерь (320 kbps)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                Высокое качество требует больше места
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="storage" className="text-sm font-medium">
+                Лимит хранения (МБ)
+              </Label>
+              <Select value={storageLimit} onValueChange={setStorageLimit}>
+                <SelectTrigger id="storage">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="50">50 МБ</SelectItem>
+                  <SelectItem value="100">100 МБ</SelectItem>
+                  <SelectItem value="250">250 МБ</SelectItem>
+                  <SelectItem value="500">500 МБ</SelectItem>
+                  <SelectItem value="unlimited">Без ограничений</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                Старые записи будут удаляться автоматически
+              </p>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-normal">Запись входящих</Label>
+                <Switch defaultChecked />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-normal">Запись исходящих</Label>
+                <Switch defaultChecked />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-normal">Уведомления о записи</Label>
+                <Switch />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setSettingsOpen(false)}>
+              Отмена
+            </Button>
+            <Button onClick={() => setSettingsOpen(false)}>
+              Сохранить
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
