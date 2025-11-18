@@ -86,6 +86,9 @@ const Index = () => {
   const [callRecords, setCallRecords] = useState<CallRecord[]>(mockCallRecords);
   const [groupByContact, setGroupByContact] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [filterType, setFilterType] = useState<'all' | 'incoming' | 'outgoing' | 'missed'>('all');
+  const [sortBy, setSortBy] = useState<'date' | 'duration'>('date');
+  const [showFilters, setShowFilters] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -215,10 +218,22 @@ const Index = () => {
     }
   };
 
-  const filteredRecords = callRecords.filter(record =>
-    record.contact.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    record.phone.includes(searchQuery)
-  );
+  const filteredRecords = callRecords
+    .filter(record => {
+      const matchesSearch = record.contact.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        record.phone.includes(searchQuery);
+      const matchesType = filterType === 'all' || record.type === filterType;
+      return matchesSearch && matchesType;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'date') {
+        return b.date.getTime() - a.date.getTime();
+      } else {
+        const durationA = a.duration.split(':').reduce((acc, time) => (60 * acc) + +time, 0);
+        const durationB = b.duration.split(':').reduce((acc, time) => (60 * acc) + +time, 0);
+        return durationB - durationA;
+      }
+    });
 
   const groupedRecords = () => {
     if (!groupByContact) return null;
@@ -261,6 +276,14 @@ const Index = () => {
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-medium text-gray-900">Записи звонков</h1>
               <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={showFilters ? "text-primary bg-primary/10" : "text-gray-600"}
+                >
+                  <Icon name="Filter" size={24} />
+                </Button>
                 {!isRecording ? (
                   <Button
                     variant="ghost"
@@ -332,6 +355,75 @@ const Index = () => {
                   className="pl-10 bg-gray-50 border-gray-200"
                 />
               </div>
+
+              {showFilters && (
+                <div className="space-y-3 animate-fade-in">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium text-gray-700">Тип звонков</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        variant={filterType === 'all' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setFilterType('all')}
+                        className="flex-1 text-xs"
+                      >
+                        Все
+                      </Button>
+                      <Button
+                        variant={filterType === 'incoming' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setFilterType('incoming')}
+                        className="flex-1 text-xs"
+                      >
+                        <Icon name="PhoneIncoming" size={14} className="mr-1" />
+                        Входящие
+                      </Button>
+                      <Button
+                        variant={filterType === 'outgoing' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setFilterType('outgoing')}
+                        className="flex-1 text-xs"
+                      >
+                        <Icon name="PhoneOutgoing" size={14} className="mr-1" />
+                        Исходящие
+                      </Button>
+                      <Button
+                        variant={filterType === 'missed' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setFilterType('missed')}
+                        className="flex-1 text-xs"
+                      >
+                        <Icon name="PhoneMissed" size={14} className="mr-1" />
+                        Пропущенные
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium text-gray-700">Сортировка</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        variant={sortBy === 'date' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSortBy('date')}
+                        className="flex-1 text-xs"
+                      >
+                        <Icon name="Calendar" size={14} className="mr-1" />
+                        По дате
+                      </Button>
+                      <Button
+                        variant={sortBy === 'duration' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSortBy('duration')}
+                        className="flex-1 text-xs"
+                      >
+                        <Icon name="Clock" size={14} className="mr-1" />
+                        По длительности
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
                 <div className="flex items-center gap-3">
