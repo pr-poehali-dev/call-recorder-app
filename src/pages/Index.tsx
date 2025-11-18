@@ -81,7 +81,11 @@ const Index = () => {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [callRecords, setCallRecords] = useState<CallRecord[]>(mockCallRecords);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -101,6 +105,47 @@ const Index = () => {
       audio.removeEventListener('ended', handleEnded);
     };
   }, []);
+
+  useEffect(() => {
+    if (isRecording) {
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+      }
+    }
+
+    return () => {
+      if (recordingIntervalRef.current) {
+        clearInterval(recordingIntervalRef.current);
+      }
+    };
+  }, [isRecording]);
+
+  const startRecording = () => {
+    setIsRecording(true);
+    setRecordingTime(0);
+  };
+
+  const stopRecording = () => {
+    setIsRecording(false);
+    
+    const newRecord: CallRecord = {
+      id: Date.now().toString(),
+      contact: 'Новая запись',
+      phone: '+7 (XXX) XXX-XX-XX',
+      type: 'outgoing',
+      duration: formatTime(recordingTime),
+      date: new Date(),
+      fileSize: `${(recordingTime * 0.5).toFixed(1)} МБ`,
+      audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
+    };
+    
+    setCallRecords([newRecord, ...callRecords]);
+    setRecordingTime(0);
+  };
 
   const handlePlayPause = (record: CallRecord) => {
     if (!record.audioUrl) return;
@@ -168,7 +213,7 @@ const Index = () => {
     }
   };
 
-  const filteredRecords = mockCallRecords.filter(record =>
+  const filteredRecords = callRecords.filter(record =>
     record.contact.toLowerCase().includes(searchQuery.toLowerCase()) ||
     record.phone.includes(searchQuery)
   );
@@ -180,15 +225,58 @@ const Index = () => {
           <div className="px-4 py-4">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-medium text-gray-900">Записи звонков</h1>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSettingsOpen(true)}
-                className="text-gray-600"
-              >
-                <Icon name="Settings" size={24} />
-              </Button>
+              <div className="flex gap-2">
+                {!isRecording ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={startRecording}
+                    className="text-red-500 hover:bg-red-50"
+                  >
+                    <Icon name="Mic" size={24} />
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={stopRecording}
+                    className="text-red-500 hover:bg-red-50 animate-pulse"
+                  >
+                    <Icon name="Square" size={24} />
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSettingsOpen(true)}
+                  className="text-gray-600"
+                >
+                  <Icon name="Settings" size={24} />
+                </Button>
+              </div>
             </div>
+
+            {isRecording && (
+              <div className="bg-red-50 border border-red-200 p-4 rounded-lg mb-4 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                    <div>
+                      <p className="text-sm font-medium text-red-900">Идёт запись...</p>
+                      <p className="text-xs text-red-600">{formatTime(recordingTime)}</p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={stopRecording}
+                    className="bg-red-500 hover:bg-red-600"
+                  >
+                    <Icon name="Square" size={16} className="mr-2" />
+                    Остановить
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg mb-4">
               <div className="flex items-center gap-3">
@@ -282,7 +370,7 @@ const Index = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => {
-                  const record = mockCallRecords.find(r => r.id === playingId);
+                  const record = callRecords.find(r => r.id === playingId);
                   if (record) handlePlayPause(record);
                 }}
                 className="flex-shrink-0 text-primary"
@@ -293,7 +381,7 @@ const Index = () => {
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm font-medium text-gray-900">
-                    {mockCallRecords.find(r => r.id === playingId)?.contact}
+                    {callRecords.find(r => r.id === playingId)?.contact}
                   </span>
                   <span className="text-xs text-gray-500">
                     {formatTime(currentTime)} / {formatTime(duration)}
