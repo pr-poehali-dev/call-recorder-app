@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ interface CallRecord {
   duration: string;
   date: Date;
   fileSize: string;
+  audioUrl?: string;
 }
 
 const mockCallRecords: CallRecord[] = [
@@ -27,7 +28,8 @@ const mockCallRecords: CallRecord[] = [
     type: 'incoming',
     duration: '5:32',
     date: new Date('2025-01-18T14:30:00'),
-    fileSize: '2.8 МБ'
+    fileSize: '2.8 МБ',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
   },
   {
     id: '2',
@@ -36,7 +38,8 @@ const mockCallRecords: CallRecord[] = [
     type: 'outgoing',
     duration: '12:45',
     date: new Date('2025-01-18T11:15:00'),
-    fileSize: '6.5 МБ'
+    fileSize: '6.5 МБ',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
   },
   {
     id: '3',
@@ -54,7 +57,8 @@ const mockCallRecords: CallRecord[] = [
     type: 'incoming',
     duration: '8:12',
     date: new Date('2025-01-17T16:20:00'),
-    fileSize: '4.2 МБ'
+    fileSize: '4.2 МБ',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'
   },
   {
     id: '5',
@@ -63,7 +67,8 @@ const mockCallRecords: CallRecord[] = [
     type: 'outgoing',
     duration: '3:27',
     date: new Date('2025-01-17T10:05:00'),
-    fileSize: '1.7 МБ'
+    fileSize: '1.7 МБ',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3'
   }
 ];
 
@@ -73,6 +78,55 @@ const Index = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [audioQuality, setAudioQuality] = useState('high');
   const [storageLimit, setStorageLimit] = useState('100');
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateDuration = () => setDuration(audio.duration);
+    const handleEnded = () => setPlayingId(null);
+
+    audio.addEventListener('timeupdate', updateTime);
+    audio.addEventListener('loadedmetadata', updateDuration);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('loadedmetadata', updateDuration);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, []);
+
+  const handlePlayPause = (record: CallRecord) => {
+    if (!record.audioUrl) return;
+
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (playingId === record.id) {
+      audio.pause();
+      setPlayingId(null);
+    } else {
+      if (playingId !== record.id) {
+        audio.src = record.audioUrl;
+        setCurrentTime(0);
+      }
+      audio.play();
+      setPlayingId(record.id);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    if (isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const formatDate = (date: Date) => {
     const today = new Date();
@@ -193,9 +247,16 @@ const Index = () => {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10">
-                    <Icon name="Play" size={20} />
-                  </Button>
+                  {record.audioUrl && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="text-primary hover:bg-primary/10"
+                      onClick={() => handlePlayPause(record)}
+                    >
+                      <Icon name={playingId === record.id ? "Pause" : "Play"} size={20} />
+                    </Button>
+                  )}
                   <Button variant="ghost" size="icon" className="text-gray-400 hover:bg-gray-100">
                     <Icon name="MoreVertical" size={20} />
                   </Button>
@@ -212,6 +273,59 @@ const Index = () => {
           )}
         </div>
       </div>
+
+      {playingId && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-20">
+          <div className="max-w-2xl mx-auto px-4 py-3">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  const record = mockCallRecords.find(r => r.id === playingId);
+                  if (record) handlePlayPause(record);
+                }}
+                className="flex-shrink-0 text-primary"
+              >
+                <Icon name="Pause" size={24} />
+              </Button>
+
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-gray-900">
+                    {mockCallRecords.find(r => r.id === playingId)?.contact}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {formatTime(currentTime)} / {formatTime(duration)}
+                  </span>
+                </div>
+                <div className="relative h-1 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className="absolute h-full bg-primary transition-all duration-100"
+                    style={{ width: `${(currentTime / duration) * 100 || 0}%` }}
+                  />
+                </div>
+              </div>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  if (audioRef.current) {
+                    audioRef.current.pause();
+                    setPlayingId(null);
+                  }
+                }}
+                className="flex-shrink-0 text-gray-400"
+              >
+                <Icon name="X" size={20} />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <audio ref={audioRef} />
 
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="sm:max-w-md">
