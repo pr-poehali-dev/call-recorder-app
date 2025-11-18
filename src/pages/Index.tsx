@@ -3,22 +3,11 @@ import Icon from '@/components/ui/icon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-
-interface CallRecord {
-  id: string;
-  contact: string;
-  phone: string;
-  type: 'incoming' | 'outgoing' | 'missed';
-  duration: string;
-  date: Date;
-  fileSize: string;
-  audioUrl?: string;
-}
+import CallRecordsList from '@/components/CallRecordsList';
+import AudioPlayer from '@/components/AudioPlayer';
+import SettingsDialog from '@/components/SettingsDialog';
+import { CallRecord } from '@/components/CallRecordItem';
 
 const mockCallRecords: CallRecord[] = [
   {
@@ -436,284 +425,46 @@ const Index = () => {
           </div>
         </div>
 
-        <div className="divide-y divide-gray-100">
-          {groupByContact ? (
-            groupedRecords()?.map((group) => (
-              <div key={group.contact} className="border-0">
-                <Card 
-                  className="border-0 rounded-none shadow-none hover:bg-gray-50 transition-colors cursor-pointer"
-                  onClick={() => toggleGroup(group.contact)}
-                >
-                  <div className="p-4 flex items-center gap-4">
-                    <div className="flex-shrink-0">
-                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Icon name="User" className="text-primary" size={24} />
-                      </div>
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="text-base font-medium text-gray-900 truncate">
-                          {group.contact}
-                        </h3>
-                        <Icon 
-                          name={expandedGroups.has(group.contact) ? "ChevronUp" : "ChevronDown"} 
-                          size={20} 
-                          className="text-gray-400"
-                        />
-                      </div>
-                      <div className="flex items-center gap-3 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Icon name="Phone" size={14} />
-                          {group.totalCalls} {group.totalCalls === 1 ? 'звонок' : 'звонков'}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Icon name="Clock" size={14} />
-                          {formatTime(group.totalDuration)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-
-                {expandedGroups.has(group.contact) && (
-                  <div className="bg-gray-50 divide-y divide-gray-200 animate-accordion-down">
-                    {group.records.map((record) => (
-                      <div key={record.id} className="pl-8 pr-4 py-3 flex items-center gap-4">
-                        <div className="flex-shrink-0">
-                          <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center">
-                            {getCallIcon(record.type)}
-                          </div>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <Badge variant="secondary" className="text-xs font-normal">
-                              {getCallTypeLabel(record.type)}
-                            </Badge>
-                            <span className="text-xs text-gray-500">{formatDate(record.date)}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span>{record.phone}</span>
-                            <span>•</span>
-                            <span>{record.duration}</span>
-                            <span>•</span>
-                            <span>{record.fileSize}</span>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                          {record.audioUrl && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-primary hover:bg-primary/10"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePlayPause(record);
-                              }}
-                            >
-                              <Icon name={playingId === record.id ? "Pause" : "Play"} size={16} />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))
-          ) : (
-            filteredRecords.map((record) => (
-              <Card key={record.id} className="border-0 rounded-none shadow-none hover:bg-gray-50 transition-colors">
-                <div className="p-4 flex items-center gap-4">
-                  <div className="flex-shrink-0">
-                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-                      {getCallIcon(record.type)}
-                    </div>
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="text-base font-medium text-gray-900 truncate">
-                        {record.contact}
-                      </h3>
-                      <span className="text-sm text-gray-500">{formatDate(record.date)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="secondary" className="text-xs font-normal">
-                        {getCallTypeLabel(record.type)}
-                      </Badge>
-                      <span className="text-sm text-gray-500">{record.phone}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <Icon name="Clock" size={12} />
-                        {record.duration}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Icon name="HardDrive" size={12} />
-                        {record.fileSize}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    {record.audioUrl && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="text-primary hover:bg-primary/10"
-                        onClick={() => handlePlayPause(record)}
-                      >
-                        <Icon name={playingId === record.id ? "Pause" : "Play"} size={20} />
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="icon" className="text-gray-400 hover:bg-gray-100">
-                      <Icon name="MoreVertical" size={20} />
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))
-          )}
-
-          {filteredRecords.length === 0 && (
-            <div className="py-16 text-center">
-              <Icon name="Phone" size={48} className="mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-500">Записи не найдены</p>
-            </div>
-          )}
-        </div>
+        <CallRecordsList
+          filteredRecords={filteredRecords}
+          groupByContact={groupByContact}
+          expandedGroups={expandedGroups}
+          playingId={playingId}
+          onPlayPause={handlePlayPause}
+          toggleGroup={toggleGroup}
+          formatDate={formatDate}
+          formatTime={formatTime}
+          getCallIcon={getCallIcon}
+          getCallTypeLabel={getCallTypeLabel}
+          groupedRecords={groupedRecords}
+        />
       </div>
 
-      {playingId && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-20">
-          <div className="max-w-2xl mx-auto px-4 py-3">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  const record = callRecords.find(r => r.id === playingId);
-                  if (record) handlePlayPause(record);
-                }}
-                className="flex-shrink-0 text-primary"
-              >
-                <Icon name="Pause" size={24} />
-              </Button>
-
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-gray-900">
-                    {callRecords.find(r => r.id === playingId)?.contact}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {formatTime(currentTime)} / {formatTime(duration)}
-                  </span>
-                </div>
-                <div className="relative h-1 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className="absolute h-full bg-primary transition-all duration-100"
-                    style={{ width: `${(currentTime / duration) * 100 || 0}%` }}
-                  />
-                </div>
-              </div>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  if (audioRef.current) {
-                    audioRef.current.pause();
-                    setPlayingId(null);
-                  }
-                }}
-                className="flex-shrink-0 text-gray-400"
-              >
-                <Icon name="X" size={20} />
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AudioPlayer
+        playingId={playingId}
+        currentTime={currentTime}
+        duration={duration}
+        callRecords={callRecords}
+        onPlayPause={handlePlayPause}
+        onClose={() => {
+          if (audioRef.current) {
+            audioRef.current.pause();
+            setPlayingId(null);
+          }
+        }}
+        formatTime={formatTime}
+      />
 
       <audio ref={audioRef} />
 
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-medium">Настройки записи</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-6 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="quality" className="text-sm font-medium">
-                Качество звука
-              </Label>
-              <Select value={audioQuality} onValueChange={setAudioQuality}>
-                <SelectTrigger id="quality">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Низкое (64 kbps)</SelectItem>
-                  <SelectItem value="medium">Среднее (128 kbps)</SelectItem>
-                  <SelectItem value="high">Высокое (256 kbps)</SelectItem>
-                  <SelectItem value="lossless">Без потерь (320 kbps)</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-gray-500">
-                Высокое качество требует больше места
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="storage" className="text-sm font-medium">
-                Лимит хранения (МБ)
-              </Label>
-              <Select value={storageLimit} onValueChange={setStorageLimit}>
-                <SelectTrigger id="storage">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="50">50 МБ</SelectItem>
-                  <SelectItem value="100">100 МБ</SelectItem>
-                  <SelectItem value="250">250 МБ</SelectItem>
-                  <SelectItem value="500">500 МБ</SelectItem>
-                  <SelectItem value="unlimited">Без ограничений</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-gray-500">
-                Старые записи будут удаляться автоматически
-              </p>
-            </div>
-
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-normal">Запись входящих</Label>
-                <Switch defaultChecked />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-normal">Запись исходящих</Label>
-                <Switch defaultChecked />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label className="text-sm font-normal">Уведомления о записи</Label>
-                <Switch />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setSettingsOpen(false)}>
-              Отмена
-            </Button>
-            <Button onClick={() => setSettingsOpen(false)}>
-              Сохранить
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <SettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        audioQuality={audioQuality}
+        storageLimit={storageLimit}
+        onAudioQualityChange={setAudioQuality}
+        onStorageLimitChange={setStorageLimit}
+      />
     </div>
   );
 };
